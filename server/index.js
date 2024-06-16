@@ -1,5 +1,8 @@
 require("dotenv").config();
 const authRoutes = require('./routes/authRoutes');
+const floorPlanRoutes = require('./routes/floorPlanRoutes');
+// const meetingRoomRoutes = require('./routes/meetingRoomRoutes');
+// const errorMiddleware = require('./middlewares/errorMiddleware');
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
@@ -12,7 +15,15 @@ mongoose.connect(process.env.MONGOURL)
         .catch(err => console.log(err));
 
 
-app.use('/',authRoutes);//login - signup
+app.use(express.json());
+
+// Define Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/floor-plans', floorPlanRoutes);
+// app.use('/api/meeting-rooms', meetingRoomRoutes);
+
+// Error Middleware
+// app.use(errorMiddleware);
 
 app.listen(PORT,()=>{
     console.log(`Server is running on PORT ${PORT}...`);
