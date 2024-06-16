@@ -1,0 +1,6 @@
+# Ignore  in all directories
+**/node_modules
+**/build
+**/dist
+**/package-lock.json
+**/.env
