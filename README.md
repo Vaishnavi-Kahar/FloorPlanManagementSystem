@@ -67,20 +67,8 @@ module.exports = authController;
 
 ## 2. Cost Estimation - Time and Space
 
-#### Efficient Algorithms
-- **AVL Trees**: Used for conflict resolution to ensure balanced and efficient data retrieval.
-- **Dijkstra's Algorithm**: Employed for finding the shortest path in the recommendation system.
-
-
 #### Data Structures:
 - **MongoDB:** Used for database storage due to its flexibility and scalability.
-- **Redis:** Used for caching frequently accessed data to optimize time and space complexity.
-
-
-#### Efficient Algorithms:
-
-- **Conflict Resolution:** Uses a custom algorithm to resolve conflicts based on timestamps and priority.
-- **Version Control:** Maintains different versions of floor plans to track changes and rollback if necessary.
 
 ### Code Snippet
 
@@ -167,81 +155,12 @@ module.exports = mongoose.model('User', UserSchema);
 
 ## 5. Trade-offs in the System
 #### Considerations:
-
-- **Performance vs. Scalability:** Using Redis for caching to enhance performance while ensuring MongoDB scalability.
-- **Maintainability vs. Complexity:** Implementing version control adds complexity but improves maintainability.
 - **Security vs. Usability:**  JWT provides robust security at the cost of slightly increased complexity.
 
 
-#### Documentation:
-All trade-offs are documented to provide a clear rationale behind each design decision.
+`
 
-
-## 6. System Monitoring
-
-#### Implementation
-- **Monitoring Tools**: Use of tools like Prometheus and Grafana for real-time monitoring.
-- **Logging Mechanisms**: Implement Winston for logging to track system performance.
-
-### Code Snippet
-
-#### `utils/logger.js`
-
-```javascript
-const { createLogger, format, transports } = require('winston');
-
-const logger = createLogger({
-  level: 'info',
-  format: format.combine(
-    format.timestamp(),
-    format.json()
-  ),
-  transports: [
-    new transports.File({ filename: 'error.log', level: 'error' }),
-    new transports.File({ filename: 'combined.log' }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new transports.Console({
-    format: format.simple(),
-  }));
-}
-
-module.exports = logger;
-```
-## 7. Caching
-
-#### Implementation
-- **Caching Mechanisms**: Use Redis to cache frequently accessed data.
-- **Cache Eviction Policies**: Implement LRU (Least Recently Used) policy for optimal resource utilization.
-
-### Code Snippet
-
-#### `utils/cache.js`
-
-```javascript
-const redis = require('redis');
-const client = redis.createClient();
-
-client.on('error', (err) => {
-  console.error('Redis error:', err);
-});
-
-exports.get = (key, callback) => {
-  client.get(key, (err, data) => {
-    if (err) return callback(err);
-    callback(null, data ? JSON.parse(data) : null);
-  });
-};
-
-exports.set = (key, value, expiry) => {
-  client.setex(key, expiry, JSON.stringify(value));
-};
-
-```
-
-## 8.Error and Exception Handling
+## 6.Error and Exception Handling
 
 #### Implementation
 - **Error Handling Framework**: Comprehensive error handling using Express middleware.
