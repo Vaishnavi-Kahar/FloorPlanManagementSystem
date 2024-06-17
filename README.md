@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Intelligent Floor Plan Management System is designed to provide a seamless workspace experience by allowing administrators to manage and optimize floor plans effectively. This system includes features for robust user authentication, conflict resolution, version control, offline synchronization, meeting room optimization, and comprehensive error handling. This document provides a detailed case study of the system's implementation, including code snippets, data structures, algorithms, and time/space complexity analysis.
+The Intelligent Floor Plan Management System is designed to provide a seamless workspace experience by allowing administrators to manage and optimize floor plans effectively. This system includes features for robust user authentication, offline synchronization, meeting room optimization, and comprehensive error handling. This document provides a detailed case study of the system's implementation, including code snippets, data structures, algorithms, and time/space complexity analysis.
 
 ## 1. Authentication
 
@@ -97,11 +97,6 @@ exports.resolveConflicts = (existingLayout, newLayout) => {
 - Space Complexity: O(n) for storing the resolved layout.
 
 ## 3. Handling System Failure Cases
-#### Implementation:
-
-- **Fault-Tolerant Mechanisms:** Use of redundant servers and regular backups.
-- **Backup and Recovery:** Regular data backups to ensure data integrity.
-- **Error Recovery Procedures:** Comprehensive error handling to minimize downtime.
 
 ### Code Snippet
 
@@ -117,11 +112,6 @@ module.exports = (err, req, res, next) => {
 
 
 ## 4. Object-Oriented Programming Language (OOPS)
-#### Implementation:
-
-- **Encapsulation:** Encapsulate related data and methods within models.
-- **Inheritance and Polymorphism:** Utilize Mongoose schemas to create reusable and extendable models.
-
 
 ### Code Snippet
 
@@ -129,38 +119,32 @@ module.exports = (err, req, res, next) => {
 
 ```javascript
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'user'], default: 'user' },
+  username: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'user'],
+    default: 'user',
+  },
 }, { timestamps: true });
 
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
-
-UserSchema.methods.comparePassword = function(password) {
-  return bcrypt.compare(password, this.password);
-};
-
 module.exports = mongoose.model('User', UserSchema);
+
 
 ```
 
 
-## 5. Trade-offs in the System
-#### Considerations:
-- **Security vs. Usability:**  JWT provides robust security at the cost of slightly increased complexity.
 
 
-`
-
-## 6.Error and Exception Handling
+## 5.Error and Exception Handling
 
 #### Implementation
 - **Error Handling Framework**: Comprehensive error handling using Express middleware.
@@ -169,30 +153,36 @@ module.exports = mongoose.model('User', UserSchema);
 
 ### Code Snippet
 
-#### `app.js`
+#### `index.js`
 
 ```javascript
-const express = require('express');
-const mongoose = require('mongoose');
-const adminRoutes = require('./routes/adminRoutes');
-const errorHandler = require('./utils/errorHandler');
-const path = require('path');
-
+require("dotenv").config();
+const authRoutes = require('./routes/authRoutes');
+const floorPlanRoutes = require('./routes/floorPlanRoutes');
+const meetingRoomRoutes = require('./routes/meetingRoomRoutes');
+const express = require("express");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
 const app = express();
+app.use(bodyParser.json());
+const PORT = process.env.PORT;
 
-mongoose.connect('mongodb://localhost:27017/floorPlanDB', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGOURL)
+        .then(() => console.log('MongoDB connected'))
+        .catch(err => console.log(err));
+
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/api/admin', adminRoutes);
+// Define Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/floor-plans', floorPlanRoutes);
+app.use('/api/meeting-rooms', meetingRoomRoutes);
 
-app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT,()=>{
+    console.log(`Server is running on PORT ${PORT}...`);
+})
 ```
 
 ## Meeting Room Optimization
@@ -203,31 +193,79 @@ app.listen(PORT, () => {
 
 ### Code Snippet
 
-#### `services/meetingRoomService.js`
+#### `controllers/meetingRoomController.js`
 
 ```javascript
 const MeetingRoom = require('../models/MeetingRoom');
+const Booking = require('../models/Booking');
 
-exports.bookMeetingRoom = async (requirements) => {
-  const availableRooms = await MeetingRoom.find({ booked: false, capacity: { $gte: requirements.capacity } }).sort({ capacity: 1 });
-  if (availableRooms.length === 0) throw new Error('No available rooms');
+const meetingRoomController = {
+  suggestMeetingRoom: async (req, res) => {
+    const { participants } = req.body;
+  
+    try {
+      // Find all rooms with capacity greater than or equal to the number of participants
+      const rooms = await MeetingRoom.find({ capacity: { $gte: participants } })
+        .sort({ capacity: 1, lastBooked: 1 })
+        .exec();
+  
+      if (rooms.length === 0) {
+        return res.status(404).json({ message: 'No suitable meeting room found' });
+      }
+  
+      // Suggest the room with the smallest capacity that is greater than or equal to the number of participants
+      const suitableRoom = rooms[0];
+  
+      res.status(200).json({ message: 'Meeting room suggested', meetingRoom: suitableRoom });
+    } catch (error) {
+      res.status(500).json({ message: 'An error occurred', error: error.message });
+    }
+  }
+  ,
+  
 
-  const room = availableRooms[0];
-  room.booked = true;
-  room.bookedBy = requirements.userId;
-  room.bookedAt = new Date();
-  await room.save();
+  bookMeetingRoom: async (req, res) => {
+    const { roomId, bookedBy, participants, startTime, endTime } = req.body;
 
-  return room;
+  try {
+    const meetingRoom = await MeetingRoom.findById(roomId);
+    if (!meetingRoom) {
+      return res.status(404).json({ message: 'Meeting room not found' });
+    }
+
+    if (participants > meetingRoom.capacity) {
+      return res.status(400).json({ message: 'Number of participants exceeds room capacity' });
+    }
+
+    const overlappingBookings = await Booking.find({
+      meetingRoom: roomId,
+      $or: [
+        { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
+        { startTime: { $lte: startTime }, endTime: { $gte: endTime } },
+        { startTime: { $gte: startTime }, endTime: { $lte: endTime } },
+      ],
+    });
+
+    if (overlappingBookings.length > 0) {
+      return res.status(400).json({ message: 'Meeting room is already booked for the specified time slot' });
+    }
+
+    const newBooking = new Booking({ meetingRoom: roomId, bookedBy, participants, startTime, endTime });
+    await newBooking.save();
+
+    meetingRoom.lastBooked = new Date();
+    await meetingRoom.save();
+
+    res.status(201).json({ message: 'Meeting room booked successfully', booking: newBooking });
+  } catch (error) {
+    res.status(500).json({ message: 'An error occurred', error: error.message });
+  }
+  }
 };
 
-exports.suggestMeetingRoom = async (requirements) => {
-  const availableRooms = await MeetingRoom.find({ booked: false, capacity: { $gte: requirements.capacity } }).sort({ capacity: 1 });
-  if (availableRooms.length === 0) return null;
+module.exports = meetingRoomController;
 
-  return availableRooms[0];
-};
 ```
 
 ## Conclusion
-This comprehensive case study provides a detailed overview of the Intelligent Floor Plan Management System, including robust user authentication, conflict resolution, version control, offline synchronization, meeting room optimization, and comprehensive error handling. The implementation uses efficient algorithms and data structures to ensure optimal time and space complexity, while also considering important trade-offs in system design.
+This comprehensive case study provides a detailed overview of the Intelligent Floor Plan Management System, including robust user authentication, offline synchronization, meeting room optimization, and comprehensive error handling. The implementation uses efficient algorithms and data structures to ensure optimal time and space complexity, while also considering important trade-offs in system design.
